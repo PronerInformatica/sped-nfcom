@@ -46,6 +46,7 @@ class Make
     protected $aRetTrib = [];
     protected $aIBSCBS = [];
     protected $aGIBSCBS = [];
+    protected $aVIBS = [];
     protected $aGIBSUF = [];
     protected $aGIBSMun = [];
     protected $aGCBS = [];
@@ -54,6 +55,7 @@ class Make
     protected $aGCBSCredPres = [];
     protected $aGTribCompraGov = [];
     protected $aGProc = [];
+    protected $aGProcRef = [];
     protected $aGRessarc = [];
     protected $total;
     protected $gFidelidade;
@@ -1719,7 +1721,7 @@ class Make
             $IBSCBS,
             'indDoacao',
             $std->indDoacao,
-            true,
+            false,
             $identificador . "[item $std->item] Indica se a operação é de doação"
         );
         $this->aIBSCBS[$std->item] = $IBSCBS;
@@ -1749,6 +1751,25 @@ class Make
         );
         $this->aGIBSCBS[$std->item] = $gIBSCBS;
         return $gIBSCBS;
+    }
+
+    /**
+     * @param stdClass $std
+     * @return \DOMElement|false
+     */
+    public function tagVIBS(stdClass $std)
+    {
+        $possible = [
+            'item',
+            'vIBS',
+        ];
+        $std = $this->equilizeParameters($std, $possible);
+
+        $gVIBS = $this->dom->createElement("vIBS", $std->vIBS);
+
+        $this->aVIBS[$std->item] = $gVIBS;
+
+        return $gVIBS;
     }
 
     /**
@@ -1791,6 +1812,7 @@ class Make
     public function tagGDifGIBSUF(stdClass $std)
     {
         $possible = [
+            'item',
             'pDif',
             'vDif',
         ];
@@ -1801,9 +1823,24 @@ class Make
             throw new RuntimeException('A TAG gIBSUF deve ser criada antes do endereço do mesmo.');
         }
         $this->gDif = $this->dom->createElement("gDif");
-        $this->dom->addChild($this->gDif, "pDif", $std->pDif, true, $identificador . "Percentual de diferimento");
-        $this->dom->addChild($this->gDif, "vDif", $std->vDif, true, $identificador . "Valor do diferimento");
-        $this->aGIBSUF->appendChild($this->gDif);
+        $this->dom->addChild(
+            $this->gDif,
+            "pDif",
+            $std->pDif,
+            true,
+            $identificador . "[item $std->item] Percentual de diferimento"
+        );
+        $this->dom->addChild(
+            $this->gDif,
+            "vDif",
+            $std->vDif,
+            true,
+            $identificador . "[item $std->item] Valor do diferimento"
+        );
+
+        $node = $this->aGIBSUF[$std->item]->getElementsByTagName('vIBSUF')->item(0);
+        $this->aGIBSUF[$std->item]->insertBefore($this->gDif, $node);
+
         return $this->gDif;
     }
 
@@ -1814,6 +1851,7 @@ class Make
     public function tagGDevTribGIBSUF(stdClass $std)
     {
         $possible = [
+            'item',
             'vDevTrib',
         ];
         $std = $this->equilizeParameters($std, $possible);
@@ -1828,9 +1866,12 @@ class Make
             "vDevTrib",
             $std->vDevTrib,
             true,
-            $identificador . "Valor do tributo devolvido"
+            $identificador . "[item $std->item] Valor do tributo devolvido"
         );
-        $this->aGIBSUF->appendChild($this->gDevTrib);
+
+        $node = $this->aGIBSUF[$std->item]->getElementsByTagName('vIBSUF')->item(0);
+        $this->aGIBSUF[$std->item]->insertBefore($this->gDevTrib, $node);
+
         return $this->gDevTrib;
     }
 
@@ -1841,6 +1882,7 @@ class Make
     public function tagGRedGIBSUF(stdClass $std)
     {
         $possible = [
+            'item',
             'pRedAliq',
             'pAliqEfet',
         ];
@@ -1850,22 +1892,25 @@ class Make
         if (empty($this->aGIBSUF)) {
             throw new RuntimeException('A TAG gIBSUF deve ser criada antes do endereço do mesmo.');
         }
-        $this->gRed = $this->dom->createElement("gDevTrib");
+        $this->gRed = $this->dom->createElement("gRed");
         $this->dom->addChild(
             $this->gRed,
             "pRedAliq",
             $std->pRedAliq,
             true,
-            $identificador . "Percentual da redução de Alíquota do cClassTrib"
+            $identificador . "[item $std->item] Percentual da redução de Alíquota do cClassTrib"
         );
         $this->dom->addChild(
             $this->gRed,
             "pAliqEfet",
             $std->pAliqEfet,
             true,
-            $identificador . "Alíquota efetiva do IBS de competência das UF que será aplicada a base de cálculo"
+            $identificador . "[item $std->item] Alíquota efetiva do IBS de competência das UF que será aplicada a base de cálculo"
         );
-        $this->aGIBSUF->appendChild($this->gRed);
+
+        $node = $this->aGIBSUF[$std->item]->getElementsByTagName('vIBSUF')->item(0);
+        $this->aGIBSUF[$std->item]->insertBefore($this->gRed, $node);
+
         return $this->gRed;
     }
 
@@ -1888,15 +1933,15 @@ class Make
             $gIBSMun,
             "pIBSMun",
             $std->pIBSMun,
-            true,
-            $identificador . "[item $std->item] Alíquota do IBS Estadual"
+            false,
+            $identificador . "[item $std->item] Alíquota do IBS Municipal"
         );
         $this->dom->addChild(
             $gIBSMun,
             "vIBSMun",
             $std->vIBSMun,
-            true,
-            $identificador . "[item $std->item] Valor do IBS de competência da UF"
+            false,
+            $identificador . "[item $std->item] Valor do IBS Municipal"
         );
         $this->aGIBSMun[$std->item] = $gIBSMun;
         return $gIBSMun;
@@ -1909,6 +1954,7 @@ class Make
     public function tagGDifGIBSMun(stdClass $std)
     {
         $possible = [
+            'item',
             'pDif',
             'vDif',
         ];
@@ -1919,9 +1965,24 @@ class Make
             throw new RuntimeException('A TAG gIBSMun deve ser criada antes do endereço do mesmo.');
         }
         $this->gDif = $this->dom->createElement("gDif");
-        $this->dom->addChild($this->gDif, "pDif", $std->pDif, true, $identificador . "Percentual de diferimento");
-        $this->dom->addChild($this->gDif, "vDif", $std->vDif, true, $identificador . "Valor do diferimento");
-        $this->aGIBSMun->appendChild($this->gDif);
+        $this->dom->addChild(
+            $this->gDif,
+            "pDif",
+            $std->pDif,
+            true,
+            $identificador . "[item $std->item] Percentual de diferimento"
+        );
+        $this->dom->addChild(
+            $this->gDif,
+            "vDif",
+            $std->vDif,
+            true,
+            $identificador . "[item $std->item] Valor do diferimento"
+        );
+
+        $node = $this->aGIBSMun[$std->item]->getElementsByTagName('vIBSMun')->item(0);
+        $this->aGIBSMun[$std->item]->insertBefore($this->gDif, $node);
+
         return $this->gDif;
     }
 
@@ -1932,6 +1993,7 @@ class Make
     public function tagGDevTribGIBSMun(stdClass $std)
     {
         $possible = [
+            'item',
             'vDevTrib',
         ];
         $std = $this->equilizeParameters($std, $possible);
@@ -1946,9 +2008,12 @@ class Make
             "vDevTrib",
             $std->vDevTrib,
             true,
-            $identificador . "Valor do tributo devolvido"
+            $identificador . "[item $std->item] Valor do tributo devolvido"
         );
-        $this->aGIBSMun->appendChild($this->gDevTrib);
+
+        $node = $this->aGIBSMun[$std->item]->getElementsByTagName('vIBSMun')->item(0);
+        $this->aGIBSMun[$std->item]->insertBefore($this->gDevTrib, $node);
+
         return $this->gDevTrib;
     }
 
@@ -1959,6 +2024,7 @@ class Make
     public function tagGRedGIBSMun(stdClass $std)
     {
         $possible = [
+            'item',
             'pRedAliq',
             'pAliqEfet',
         ];
@@ -1968,22 +2034,25 @@ class Make
         if (empty($this->aGIBSMun)) {
             throw new RuntimeException('A TAG gIBSMun deve ser criada antes do endereço do mesmo.');
         }
-        $this->gRed = $this->dom->createElement("gDevTrib");
+        $this->gRed = $this->dom->createElement("gRed");
         $this->dom->addChild(
             $this->gRed,
             "pRedAliq",
             $std->pRedAliq,
             true,
-            $identificador . "Percentual da redução de Alíquota do cClassTrib"
+            $identificador . "[item $std->item] Percentual da redução de Alíquota do cClassTrib"
         );
         $this->dom->addChild(
             $this->gRed,
             "pAliqEfet",
             $std->pAliqEfet,
             true,
-            $identificador . "Alíquota efetiva do IBS de competência das UF que será aplicada a base de cálculo"
+            $identificador . "[item $std->item] Alíquota efetiva do IBS do Municipio que será aplicada a base de cálculo"
         );
-        $this->aGIBSMun->appendChild($this->gRed);
+
+        $node = $this->aGIBSMun[$std->item]->getElementsByTagName('vIBSMun')->item(0);
+        $this->aGIBSMun[$std->item]->insertBefore($this->gRed, $node);
+
         return $this->gRed;
     }
 
@@ -2027,6 +2096,7 @@ class Make
     public function tagGDifGCBS(stdClass $std)
     {
         $possible = [
+            'item',
             'pDif',
             'vDif',
         ];
@@ -2037,9 +2107,24 @@ class Make
             throw new RuntimeException('A TAG aGCBS deve ser criada antes do endereço do mesmo.');
         }
         $this->gDif = $this->dom->createElement("gDif");
-        $this->dom->addChild($this->gDif, "pDif", $std->pDif, true, $identificador . "Percentual de diferimento");
-        $this->dom->addChild($this->gDif, "vDif", $std->vDif, true, $identificador . "Valor do diferimento");
-        $this->aGCBS->appendChild($this->gDif);
+        $this->dom->addChild(
+            $this->gDif,
+            "pDif",
+            $std->pDif,
+            true,
+            $identificador . "[item $std->item] Percentual de diferimento"
+        );
+        $this->dom->addChild(
+            $this->gDif,
+            "vDif",
+            $std->vDif,
+            true,
+            $identificador . "[item $std->item] Valor do diferimento"
+        );
+
+        $node = $this->aGCBS[$std->item]->getElementsByTagName('vCBS')->item(0);
+        $this->aGCBS[$std->item]->insertBefore($this->gDif, $node);
+
         return $this->gDif;
     }
 
@@ -2050,6 +2135,7 @@ class Make
     public function tagGDevTribGCBS(stdClass $std)
     {
         $possible = [
+            'item',
             'vDevTrib',
         ];
         $std = $this->equilizeParameters($std, $possible);
@@ -2064,9 +2150,12 @@ class Make
             "vDevTrib",
             $std->vDevTrib,
             true,
-            $identificador . "Valor do tributo devolvido"
+            $identificador . "[item $std->item] Valor do tributo devolvido"
         );
-        $this->aGCBS->appendChild($this->gDevTrib);
+
+        $node = $this->aGCBS[$std->item]->getElementsByTagName('vCBS')->item(0);
+        $this->aGCBS[$std->item]->insertBefore($this->gDevTrib, $node);
+
         return $this->gDevTrib;
     }
 
@@ -2077,6 +2166,7 @@ class Make
     public function tagGRedGCBS(stdClass $std)
     {
         $possible = [
+            'item',
             'pRedAliq',
             'pAliqEfet',
         ];
@@ -2086,22 +2176,25 @@ class Make
         if (empty($this->aGCBS)) {
             throw new RuntimeException('A TAG aGCBS deve ser criada antes do endereço do mesmo.');
         }
-        $this->gRed = $this->dom->createElement("gDevTrib");
+        $this->gRed = $this->dom->createElement("gRed");
         $this->dom->addChild(
             $this->gRed,
             "pRedAliq",
             $std->pRedAliq,
             true,
-            $identificador . "Percentual da redução de Alíquota do cClassTrib"
+            $identificador . "[item $std->item] Percentual da redução de Alíquota do cClassTrib"
         );
         $this->dom->addChild(
             $this->gRed,
             "pAliqEfet",
             $std->pAliqEfet,
             true,
-            $identificador . "Alíquota efetiva do IBS de competência das UF que será aplicada a base de cálculo"
+            $identificador . "[item $std->item] Alíquota efetiva do CBS que será aplicada a base de cálculo"
         );
-        $this->aGCBS->appendChild($this->gRed);
+
+        $node = $this->aGCBS[$std->item]->getElementsByTagName('vCBS')->item(0);
+        $this->aGCBS[$std->item]->insertBefore($this->gRed, $node);
+
         return $this->gRed;
     }
 
@@ -2343,7 +2436,7 @@ class Make
             "pAliqCBS",
             $std->pAliqCBS,
             true,
-            $identificador . "[item $std->item] Alíquota IBS do CBS utilizada"
+            $identificador . "[item $std->item] Alíquota do CBS utilizada"
         );
         $this->dom->addChild(
             $gTribCompraGov,
@@ -2463,7 +2556,7 @@ class Make
             "vFCP",
             $this->conditionalNumberFormatting($std->vFCP),
             false,
-            $identificador . "[item $std->item] 	Valor do Fundo de Combate à Pobreza (FCP)"
+            $identificador . "[item $std->item] Valor do Fundo de Combate à Pobreza (FCP)"
         );
         $this->aGProcRef[$std->item] = $gProcRef;
         return $gProcRef;
@@ -3492,6 +3585,11 @@ class Make
                     if (!empty($this->aGIBSMun[$nItem])) {
                         $child = $this->aGIBSMun[$nItem];
                         $this->dom->appChild($aGIBSCBS, $child, "Inclusão do node gIBSMun");
+                    }
+
+                    if (!empty($this->aVIBS[$nItem])) {
+                        $child = $this->aVIBS[$nItem];
+                        $this->dom->appChild($aGIBSCBS, $child, "Inclusão do node vIBS");
                     }
 
                     if (!empty($this->aGCBS[$nItem])) {
