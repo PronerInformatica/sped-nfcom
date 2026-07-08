@@ -224,7 +224,7 @@ class Complements
         $nfcom = $req->getElementsByTagName('NFCom')->item(0);
         $infNFCom = $req->getElementsByTagName('infNFCom')->item(0);
         $versao = $infNFCom->getAttribute("versao");
-        $chave = preg_replace('/[^0-9]/', '', $infNFCom->getAttribute("Id"));
+        $chave = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', preg_replace('/^NFCom/i', '', $infNFCom->getAttribute("Id"))));
         $digNFCom = $req->getElementsByTagName('DigestValue')
             ->item(0)
             ->nodeValue;

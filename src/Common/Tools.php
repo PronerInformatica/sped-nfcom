@@ -165,7 +165,7 @@ class Tools
     /**
      * @var array
      */
-    protected $availableVersions = ['1.00' => 'PL_NFCOM_1.00_NT2025.001 RTC_1.10'];
+    protected $availableVersions = ['1.00' => 'PL_NFCOM_1.00_NT2026.002 RTC_1.01'];
     /**
      * @var string
      */

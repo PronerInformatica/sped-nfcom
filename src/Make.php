@@ -81,7 +81,7 @@ class Make
     {
         $possible = ['Id', 'versao'];
         $std = $this->equilizeParameters($std, $possible);
-        $chave = preg_replace('/[^0-9]/', '', $std->Id);
+        $chave = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', preg_replace('/^NFCom/i', '', $std->Id)));
         $this->infNFCom = $this->dom->createElement("infNFCom");
         $this->infNFCom->setAttribute("Id", 'NFCom' . $chave);
         $this->infNFCom->setAttribute(
@@ -295,7 +295,7 @@ class Make
         $this->dom->addChild(
             $this->emit,
             "CNPJ",
-            Strings::onlyNumbers($std->CNPJ),
+            strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $std->CNPJ)),
             false,
             $identificador . "CNPJ do emitente"
         );
@@ -476,7 +476,7 @@ class Make
             $this->dom->addChild(
                 $this->dest,
                 "CNPJ",
-                Strings::onlyNumbers($std->CNPJ),
+                strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $std->CNPJ)),
                 true,
                 $identificador . "CNPJ do destinatário"
             );

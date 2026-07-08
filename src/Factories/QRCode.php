@@ -63,7 +63,7 @@ class QRCode
         $dest = $dom->getElementsByTagName('dest')->item(0);
         $icmsTot = $dom->getElementsByTagName('ICMSTot')->item(0);
         $signedInfo = $dom->getElementsByTagName('SignedInfo')->item(0);
-        $chNFe = preg_replace('/[^0-9]/', '', $infNFe->getAttribute("Id"));
+        $chNFe = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', preg_replace('/^NFCom/i', '', $infNFe->getAttribute("Id"))));
         $tpAmb = $ide->getElementsByTagName('tpAmb')->item(0)->nodeValue;
         $dhEmi = $ide->getElementsByTagName('dhEmi')->item(0)->nodeValue;
         $tpEmis = $ide->getElementsByTagName('tpEmis')->item(0)->nodeValue;
