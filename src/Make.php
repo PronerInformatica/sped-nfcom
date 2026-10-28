@@ -57,6 +57,8 @@ class Make
     protected $aGProc = [];
     protected $aGProcRef = [];
     protected $aGRessarc = [];
+    protected $aGICMSPrevistoPagtoAntecip = [];
+    protected $aGProcRefIBSCBS = [];
     protected $total;
     protected $gFidelidade;
     protected $gFat;
@@ -117,6 +119,11 @@ class Make
             'indCessaoMeiosRede',
             'dhCont',
             'xJust',
+            'gCompraGov_tpEnteGov',
+            'gCompraGov_pRedutor',
+            'gCompraGov_tpOperGov',
+            'gCompraGov_refDFeAnt',
+            'tpPagAnt',
         ];
         $std = $this->equilizeParameters($std, $possible);
 
@@ -269,6 +276,51 @@ class Make
                 $identificador . "Justificativa da entrada em contingência"
             );
         }
+        // NT 2026.002: grupo de compras governamentais (TCompraGovReduzido)
+        if ($std->gCompraGov_tpEnteGov !== null || $std->gCompraGov_tpOperGov !== null) {
+            $gCompraGov = $this->dom->createElement("gCompraGov");
+            $this->dom->addChild(
+                $gCompraGov,
+                "tpEnteGov",
+                $std->gCompraGov_tpEnteGov,
+                true,
+                $identificador . "Tipo de ente governamental"
+            );
+            $this->dom->addChild(
+                $gCompraGov,
+                "pRedutor",
+                $this->conditionalNumberFormatting($std->gCompraGov_pRedutor, 4),
+                true,
+                $identificador . "Percentual de redução de alíquota em compra governamental"
+            );
+            $this->dom->addChild(
+                $gCompraGov,
+                "tpOperGov",
+                $std->gCompraGov_tpOperGov,
+                true,
+                $identificador . "Tipo da operação com ente governamental"
+            );
+            if (!empty($std->gCompraGov_refDFeAnt)) {
+                foreach ((array) $std->gCompraGov_refDFeAnt as $refDFeAnt) {
+                    $this->dom->addChild(
+                        $gCompraGov,
+                        "refDFeAnt",
+                        $refDFeAnt,
+                        true,
+                        $identificador . "Chave de acesso do documento fiscal anterior"
+                    );
+                }
+            }
+            $this->dom->appChild($ide, $gCompraGov, 'Inclusão do node gCompraGov');
+        }
+        // NT 2026.002: tipo de pagamento / pagamento antecipado (1, 2 ou 3)
+        $this->dom->addChild(
+            $ide,
+            "tpPagAnt",
+            $std->tpPagAnt,
+            false,
+            $identificador . "Tipo Pagamento ou Pagamento Antecipado"
+        );
 
         $this->ide = $ide;
         return $ide;
@@ -653,6 +705,7 @@ class Make
             'dContratoFim',
             'NroTermPrinc',
             'cUFPrinc',
+            'cMunPrinc',
             'NroTermAdic',
             'cUF',
         ];
@@ -716,6 +769,14 @@ class Make
                 $std->cUFPrinc,
                 true,
                 $identificador . "Código da UF de habilitação do terminal do assinante"
+            );
+            // NT 2026.004: município do terminal principal (local de destino do IBS/CBS)
+            $this->dom->addChild(
+                $this->assinante,
+                "cMunPrinc",
+                $std->cMunPrinc,
+                false,
+                $identificador . "Código do município do terminal principal (IBGE)"
             );
         }
         if (!empty($std->NroTermAdic) && !empty($std->cUFAdic)) {
@@ -980,6 +1041,11 @@ class Make
             'vProd',
             'dExpiracao',
             'indDevolucao',
+            'vItemLiq',
+            'vProdLiq',
+            'CNPJCobrTerc',
+            'gPagAntecipado_chDFePagAnt',
+            'gPagAntecipado_nItemPagAnt',
         ];
         $std = $this->equilizeParameters($std, $possible);
 
@@ -1062,6 +1128,23 @@ class Make
             true,
             $identificador . "[item $std->item] Valor total do item"
         );
+        // NT 2026.004: valor líquido do item (sem tributos). Grupo opcional; se informado, os dois campos são obrigatórios
+        if ($std->vItemLiq !== null || $std->vProdLiq !== null) {
+            $this->dom->addChild(
+                $prod,
+                "vItemLiq",
+                $this->conditionalNumberFormatting($std->vItemLiq, 8),
+                true,
+                $identificador . "[item $std->item] Valor unitário do item sem tributos"
+            );
+            $this->dom->addChild(
+                $prod,
+                "vProdLiq",
+                $this->conditionalNumberFormatting($std->vProdLiq, 8),
+                true,
+                $identificador . "[item $std->item] Valor líquido total do item sem tributos (vItemLiq x qFaturada)"
+            );
+        }
         $this->dom->addChild(
             $prod,
             "dExpiracao",
@@ -1076,6 +1159,33 @@ class Make
             false,
             $identificador . "[item $std->item] Indicador de devolução do valor do item"
         );
+        // NT 2026.002: CNPJ de cobrança de terceiro (cClass grupo 110)
+        $this->dom->addChild(
+            $prod,
+            "CNPJCobrTerc",
+            !empty($std->CNPJCobrTerc) ? strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $std->CNPJCobrTerc)) : null,
+            false,
+            $identificador . "[item $std->item] CNPJ de cobrança de terceiro"
+        );
+        // NT 2026.002: grupo de antecipação de pagamento (somente quando tpPagAnt=3)
+        if (!empty($std->gPagAntecipado_chDFePagAnt)) {
+            $gPagAntecipado = $this->dom->createElement("gPagAntecipado");
+            $this->dom->addChild(
+                $gPagAntecipado,
+                "chDFePagAnt",
+                $std->gPagAntecipado_chDFePagAnt,
+                true,
+                $identificador . "[item $std->item] Chave de acesso da nota de antecipação de pagamento"
+            );
+            $this->dom->addChild(
+                $gPagAntecipado,
+                "nItemPagAnt",
+                $std->gPagAntecipado_nItemPagAnt,
+                false,
+                $identificador . "[item $std->item] Número do item do DFe de antecipação"
+            );
+            $this->dom->appChild($prod, $gPagAntecipado, 'Inclusão do node gPagAntecipado');
+        }
         $this->aProd[$std->item] = $prod;
         return $prod;
     }
@@ -1453,6 +1563,34 @@ class Make
         $this->aIndSemCST[$std->item] = $indSemCST;
 
         return $indSemCST;
+    }
+
+    /**
+     * NT 2026.004: grupo gICMSPrevistoPagtoAntecip (alternativa a ICMS/ICMSSN/indSemCST dentro de imposto)
+     * Usado exclusivamente na determinação da BC de IBS/CBS em pagamento antecipado
+     * (tpPagAnt = 1 ou 2, ou tpOperGov = 4). Informar 0 quando não houver ICMS devido.
+     * @param stdClass $std item, vICMSPrevisto
+     * @return \DOMElement
+     */
+    public function tagGICMSPrevistoPagtoAntecip(stdClass $std)
+    {
+        $possible = [
+            'item',
+            'vICMSPrevisto',
+        ];
+        $std = $this->equilizeParameters($std, $possible);
+
+        $identificador = '<gICMSPrevistoPagtoAntecip> - ';
+        $grupo = $this->dom->createElement("gICMSPrevistoPagtoAntecip");
+        $this->dom->addChild(
+            $grupo,
+            "vICMSPrevisto",
+            $this->conditionalNumberFormatting($std->vICMSPrevisto ?? 0),
+            true,
+            $identificador . "[item $std->item] Valor do ICMS a incidir no momento do fornecimento futuro"
+        );
+        $this->aGICMSPrevistoPagtoAntecip[$std->item] = $grupo;
+        return $grupo;
     }
 
     /**
@@ -2563,6 +2701,57 @@ class Make
     }
 
     /**
+     * NT 2026.004: grupo gIBSCBS dentro de gProcRef
+     * Valores de IBS e CBS que seriam devidos sem a aplicação do processo judicial referenciado.
+     * @param stdClass $std item, vBC, vIBSUF, vIBSMun, vCBS
+     * @return \DOMElement
+     */
+    public function tagGProcRefIBSCBS(stdClass $std)
+    {
+        $possible = [
+            'item',
+            'vBC',
+            'vIBSUF',
+            'vIBSMun',
+            'vCBS',
+        ];
+        $std = $this->equilizeParameters($std, $possible);
+
+        $identificador = '<gProcRef/gIBSCBS> - ';
+        $gIBSCBS = $this->dom->createElement("gIBSCBS");
+        $this->dom->addChild(
+            $gIBSCBS,
+            "vBC",
+            $this->conditionalNumberFormatting($std->vBC),
+            true,
+            $identificador . "[item $std->item] Base de cálculo do IBS e CBS sem o processo"
+        );
+        $this->dom->addChild(
+            $gIBSCBS,
+            "vIBSUF",
+            $this->conditionalNumberFormatting($std->vIBSUF),
+            true,
+            $identificador . "[item $std->item] Valor do IBS estadual sem o processo"
+        );
+        $this->dom->addChild(
+            $gIBSCBS,
+            "vIBSMun",
+            $this->conditionalNumberFormatting($std->vIBSMun),
+            true,
+            $identificador . "[item $std->item] Valor do IBS municipal sem o processo"
+        );
+        $this->dom->addChild(
+            $gIBSCBS,
+            "vCBS",
+            $this->conditionalNumberFormatting($std->vCBS),
+            true,
+            $identificador . "[item $std->item] Valor da CBS sem o processo"
+        );
+        $this->aGProcRefIBSCBS[$std->item] = $gIBSCBS;
+        return $gIBSCBS;
+    }
+
+    /**
      * @param stdClass $std
      * @return \DOMElement|false
      */
@@ -2660,6 +2849,7 @@ class Make
     {
         $possible = [
             'vProd',
+            'vProdLiq',
             'vCOFINS',
             'vPIS',
             'vFUNTTEL',
@@ -2679,6 +2869,14 @@ class Make
             $this->conditionalNumberFormatting($std->vProd),
             true,
             $identificador . "Valor Total dos produtos e serviços"
+        );
+        // NT 2026.004: somatório do vProdLiq dos itens (RV 1054)
+        $this->dom->addChild(
+            $this->total,
+            "vProdLiq",
+            $this->conditionalNumberFormatting($std->vProdLiq),
+            false,
+            $identificador . "Valor Total líquido dos produtos e serviços sem tributos"
         );
         $this->dom->addChild(
             $this->total,
@@ -2734,7 +2932,7 @@ class Make
             "vTotDFe",
             $this->conditionalNumberFormatting($std->vTotDFe),
             false,
-            "Valor total do documento fiscal (vNF + total do IBS + total da CBS)"
+            "Valor total do documento fiscal (NT 2026.004 RV 365: igual ao vNF; IBS e CBS já compõem o vProd)"
         );
         return $this->total;
     }
@@ -3543,6 +3741,11 @@ class Make
                     $child = $this->aICMSSN[$nItem];
                     $this->dom->appChild($imposto, $child, "Inclusão do node ICMSSN");
                 }
+                // NT 2026.004: alternativa ao ICMS/ICMSSN em pagamento antecipado
+                if (!empty($this->aGICMSPrevistoPagtoAntecip[$nItem])) {
+                    $child = $this->aGICMSPrevistoPagtoAntecip[$nItem];
+                    $this->dom->appChild($imposto, $child, "Inclusão do node gICMSPrevistoPagtoAntecip");
+                }
                 if (!empty($this->aICMSUFDest[$nItem])) {
                     foreach ($this->aICMSUFDest[$nItem] as $aICMSUFDest) {
                         $this->dom->appChild($imposto, $aICMSUFDest, "Inclusão do node aICMSUFDest");
@@ -3626,6 +3829,11 @@ class Make
             // GPROCREF
             if (!empty($this->aGProcRef[$nItem])) {
                 $gProcRef = $this->aGProcRef[$nItem];
+                // NT 2026.004: gIBSCBS vem antes de gProc
+                if (!empty($this->aGProcRefIBSCBS[$nItem])) {
+                    $child = $this->aGProcRefIBSCBS[$nItem];
+                    $this->dom->appChild($gProcRef, $child, "Inclusão do node gProcRef/gIBSCBS");
+                }
                 if (!empty($this->aGProc[$nItem])) {
                     $child = $this->aGProc[$nItem];
                     $this->dom->appChild($gProcRef, $child, "Inclusão do node gProc");

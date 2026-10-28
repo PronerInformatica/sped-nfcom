@@ -9,7 +9,8 @@ Todas as atualizações a partir de 30/05/2016 devem observar os princípios [Ma
 ## Notas da versão:
 
 ### Added
-- Nothing
+- NT 2026.004 RTC (NFCom): `vItemLiq` e `vProdLiq` no `prod`, `vProdLiq` no `total`, `cMunPrinc` no `assinante`, grupo `gICMSPrevistoPagtoAntecip` (novo metodo `tagGICMSPrevistoPagtoAntecip`) e subgrupo `gProcRef/gIBSCBS` (novo metodo `tagGProcRefIBSCBS`). `vTotDFe` passa a repetir o `vNF` (RV 365).
+- NT 2026.002 RTC (NFCom): `gCompraGov` e `tpPagAnt` no `ide`; `CNPJCobrTerc` e `gPagAntecipado` no `prod`.
 
 ### Deprecated
 - Nothing
